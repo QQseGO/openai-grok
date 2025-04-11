@@ -49,10 +49,18 @@ Deno.serve(async (req) => {
       const requestData = await req.json();
       
       // 获取请求参数
-      const model = requestData.model;
+      let model = requestData.model;
       const messages = requestData.messages || [];
       const temperature = requestData.temperature ?? 0.7;
       const stream = requestData.stream ?? false;
+      
+      // 处理模型名称中的推理深度后缀
+      let reasoning_effort = undefined;
+      if (model.endsWith('-high') || model.endsWith('-low')) {
+        const suffix = model.endsWith('-high') ? '-high' : '-low';
+        reasoning_effort = suffix.substring(1); // 移除连字符，得到 'high' 或 'low'
+        model = model.substring(0, model.length - suffix.length); // 移除后缀得到原始模型名
+      }
       
       // 构建发送到Grok的请求
       const grokRequestBody = {
@@ -61,6 +69,11 @@ Deno.serve(async (req) => {
         temperature,
         stream
       };
+      
+      // 添加推理深度参数（如果存在）
+      if (reasoning_effort !== undefined) {
+        grokRequestBody.reasoning_effort = reasoning_effort;
+      }
       
       // 只有当请求中包含max_tokens时才添加到请求体
       if (requestData.max_tokens !== undefined) {
